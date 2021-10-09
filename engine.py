@@ -26,12 +26,18 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
     print_freq = 10
 
     for batch in metric_logger.log_every(data_loader, print_freq, header):
+        # batch -> obj in data_loader
         img_data, text_data, target = batch
 
         # copy to GPU
         img_data = img_data.to(device)
         text_data = text_data.to(device)
         target = target.to(device)
+
+        """model forward
+            build_model in train.py
+            forward in trans_vg.py
+        """
 
         # model forward
         output = model(img_data, text_data)

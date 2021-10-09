@@ -27,7 +27,6 @@ class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
-
     def __init__(self, window_size=1, fmt=None):
         if fmt is None:
             fmt = "{median:.4f} ({global_avg:.4f})"
@@ -65,6 +64,7 @@ class SmoothedValue(object):
     def avg(self):
         d = torch.tensor(list(self.deque), dtype=torch.float32)
         return d.mean().item()
+
 
     @property
     def global_avg(self):
@@ -204,7 +204,9 @@ class MetricLogger(object):
 
     def add_meter(self, name, meter):
         self.meters[name] = meter
-
+    #
+    # record the costed time and load data
+    #
     def log_every(self, iterable, print_freq, header=None):
         i = 0
         if not header:
