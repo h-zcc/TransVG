@@ -236,18 +236,24 @@ def main(args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             sampler_train.set_epoch(epoch)
+        #
+        # train one epoch
+        #
         train_stats = train_one_epoch(
             args, model, data_loader_train, optimizer, device, epoch, args.clip_max_norm
         )
         lr_scheduler.step()
-
-        val_stats = validate(args, model, data_loader_val, device)
-        
+        #
+        # validate stats and log_stats
+        #
+        val_stats = validate(args, model, data_loader_val, device)                          # validate
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'validation_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
-
+        #
+        # save models
+        #
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")

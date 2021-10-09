@@ -12,16 +12,16 @@ from utils.box_utils import xywh2xyxy
 class TransVG(nn.Module):
     def __init__(self, args):
         super(TransVG, self).__init__()
-        hidden_dim = args.vl_hidden_dim
+        hidden_dim = args.vl_hidden_dim                             # dimension of the vision-language transformer. default = 256
         divisor = 16 if args.dilation else 32
-        self.num_visu_token = int((args.imsize / divisor) ** 2)
+        self.num_visu_token = int((args.imsize / divisor) ** 2)     # image size, default 640    (640 / 16) ** 2
         self.num_text_token = args.max_query_len
 
         self.visumodel = build_detr(args)
         self.textmodel = build_bert(args)
 
-        num_total = self.num_visu_token + self.num_text_token + 1
-        self.vl_pos_embed = nn.Embedding(num_total, hidden_dim)
+        num_total = self.num_visu_token + self.num_text_token + 1   # N_v + N_l + 1  [REG]
+        self.vl_pos_embed = nn.Embedding(num_total, hidden_dim)     # visual-linguistic transformer's positional embedding, {hidden_dim}D embedding with {num_total} tokens
         self.reg_token = nn.Embedding(1, hidden_dim)
 
         self.visu_proj = nn.Linear(self.visumodel.num_channels, hidden_dim)
