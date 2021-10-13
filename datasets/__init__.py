@@ -61,7 +61,7 @@ def make_transforms(args, image_set, is_onestage=False):
 def build_dataset(split, args):
     return TransVGDataset(data_root=args.data_root,     #./ln_data/
                         split_root=args.split_root,     #data
-                        dataset=args.dataset,           #referit
-                        split=split,
+                        dataset=args.dataset,           #referit / unc / unc+
+                        split=split,                    # 'train'
                         transform=make_transforms(args, split),
                         max_query_len=args.max_query_len)

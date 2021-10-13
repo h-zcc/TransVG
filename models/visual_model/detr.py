@@ -53,7 +53,7 @@ class DETR(nn.Module):
 
             It returns a dict with the following elements:
                - "pred_logits": the classification logits (including no-object) for all queries.
-                                Shape= [batch_size x num_queries x (num_classes + 1)]
+                                Shape= [batch_size x num_queries x (num_classes + 1)]                   num_queries -> object query
                - "pred_boxes": The normalized boxes coordinates for all queries, represented as
                                (center_x, center_y, height, width). These values are normalized in [0, 1],
                                relative to the size of each individual image (disregarding possible padding).
@@ -61,7 +61,7 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        if isinstance(samples, (list, torch.Tensor)):
+        if isinstance(samples, (list, torch.Tensor)):       #samples: img_Data
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
 

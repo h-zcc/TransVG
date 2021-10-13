@@ -34,11 +34,7 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
         text_data = text_data.to(device)
         target = target.to(device)
 
-        """model forward
-            build_model in train.py
-            forward in trans_vg.py
-        """
-
+        # transVG forward
         # model forward
         output = model(img_data, text_data)
 

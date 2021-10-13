@@ -35,7 +35,7 @@ class TransVG(nn.Module):
         bs = img_data.tensors.shape[0]
 
         # visual backbone
-        visu_mask, visu_src = self.visumodel(img_data)
+        visu_mask, visu_src = self.visumodel(img_data)      #detr forward
         visu_src = self.visu_proj(visu_src) # (N*B)xC
 
         # language bert
@@ -66,7 +66,7 @@ class TransVG(nn.Module):
 class MLP(nn.Module):
     """ Very simple multi-layer perceptron (also called FFN)"""
 
-    def __init__(self, input_dim, hidden_dim, output_dim, num_layers):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers):          # hidden_dim   hidden_dim   4    3
         super().__init__()
         self.num_layers = num_layers
         h = [hidden_dim] * (num_layers - 1)
