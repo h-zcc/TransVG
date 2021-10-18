@@ -17,7 +17,7 @@ import utils.misc as utils
 from models import build_model
 from datasets import build_dataset
 from engine import train_one_epoch, validate
-
+from datasets.refexp import RefExpEvaluator
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
@@ -49,6 +49,14 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model_name', type=str, default='TransVG',
                         help="Name of model to be exploited.")
+
+    # * Loss coefficients
+    parser.add_argument('--mask_loss_coef', default=1, type=float)
+    parser.add_argument('--dice_loss_coef', default=1, type=float)
+    parser.add_argument('--bbox_loss_coef', default=5, type=float)
+    parser.add_argument('--giou_loss_coef', default=2, type=float)
+    parser.add_argument('--eos_coef', default=0.1, type=float,
+                        help="Relative classification weight of the no-object class")
     
     # DETR parameters
     # * Backbone
@@ -137,7 +145,7 @@ def main(args):
     random.seed(seed)
     
     # build model
-    model = build_model(args)
+    model, criterion, postprocessors = build_model(args)
     model.to(device)
 
     model_without_ddp = model
@@ -240,13 +248,13 @@ def main(args):
         # train one epoch
         #
         train_stats = train_one_epoch(
-            args, model, data_loader_train, optimizer, device, epoch, args.clip_max_norm
+            args, model, criterion, data_loader_train, optimizer, device, epoch, args.clip_max_norm
         )
         lr_scheduler.step()
         #
         # validate stats and log_stats
         #
-        val_stats = validate(args, model, data_loader_val, device)                          # validate
+        val_stats = validate(args, model, criterion, postprocessors, data_loader_val, device)                          # validate
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      **{f'validation_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch,

@@ -16,7 +16,7 @@ import utils.loss_utils as loss_utils
 import utils.eval_utils as eval_utils
 
 
-def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable, 
+def train_one_epoch(args, model: torch.nn.Module, criterion: torch.nn.Module, data_loader: Iterable,
                     optimizer: torch.optim.Optimizer, device: torch.device, 
                     epoch: int, max_norm: float = 0):
     model.train()
@@ -25,9 +25,11 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 10
 
-    for batch in metric_logger.log_every(data_loader, print_freq, header):
+    for batch, samples, targets in metric_logger.log_every(data_loader, print_freq, header):
         # batch -> obj in data_loader
         img_data, text_data, target = batch
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
 
         # copy to GPU
         img_data = img_data.to(device)
@@ -36,17 +38,30 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
 
         # transVG forward
         # model forward
-        output = model(img_data, text_data)
+        outputs = model(img_data, text_data)
 
-        loss_dict = loss_utils.trans_vg_loss(output, target)
-        losses = sum(loss_dict[k] for k in loss_dict.keys())
+        # @Trench   replace the original TransVG Loss with DETR bipartiate Loss
+        #           and reduce losses
+        loss_dict = criterion(outputs, targets)
+        weight_dict = criterion.weight_dict
+        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        # loss_dict = loss_utils.trans_vg_loss(output, target)
+        # losses = sum(loss_dict[k] for k in loss_dict.keys())
 
         # reduce losses over all GPUs for logging purposes
+        # loss_dict_reduced = utils.reduce_dict(loss_dict)
+        # loss_dict_reduced_unscaled = {k: v
+        #                               for k, v in loss_dict_reduced.items()}
+        # losses_reduced_unscaled = sum(loss_dict_reduced_unscaled.values())
+        # loss_value = losses_reduced_unscaled.item()
         loss_dict_reduced = utils.reduce_dict(loss_dict)
-        loss_dict_reduced_unscaled = {k: v
+        loss_dict_reduced_unscaled = {f'{k}_unscaled': v
                                       for k, v in loss_dict_reduced.items()}
-        losses_reduced_unscaled = sum(loss_dict_reduced_unscaled.values())
-        loss_value = losses_reduced_unscaled.item()
+        loss_dict_reduced_scaled = {k: v * weight_dict[k]
+                                    for k, v in loss_dict_reduced.items() if k in weight_dict}
+        losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
+
+        loss_value = losses_reduced_scaled.item()
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
@@ -68,23 +83,28 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable,
 
 
 @torch.no_grad()
-def validate(args, model: torch.nn.Module, data_loader: Iterable, device: torch.device):
+def validate(args, model: torch.nn.Module, criterion, postprocessors, data_loader: Iterable, device: torch.device):
     model.eval()
 
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Eval:'
 
-    for batch in metric_logger.log_every(data_loader, 10, header):
+    for batch, samples, targets in metric_logger.log_every(data_loader, 10, header):
         img_data, text_data, target = batch
         batch_size = img_data.tensors.size(0)
+        samples = samples.to(device)
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         # copy to GPU
         img_data = img_data.to(device)
         text_data = text_data.to(device)
         target = target.to(device)
         
-        pred_boxes = model(img_data, text_data)
-        miou, accu = eval_utils.trans_vg_eval_val(pred_boxes, target)
-        
+        outputs = model(img_data, text_data)
+        loss_dict = criterion(outputs, targets)
+        weight_dict = criterion.weight_dict
+
+        miou, accu = eval_utils.trans_vg_eval_val(outputs[0], target)
+
         metric_logger.update_v2('miou', torch.mean(miou), batch_size)
         metric_logger.update_v2('accu', accu, batch_size)
 
